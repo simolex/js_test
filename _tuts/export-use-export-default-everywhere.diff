@@ -1,0 +1,30 @@
+diff --git a/assets/js/Components/RepLogApp.js b/assets/js/Components/RepLogApp.js
+index 911cab7..f6a85db 100644
+--- a/assets/js/Components/RepLogApp.js
++++ b/assets/js/Components/RepLogApp.js
+@@ -216,4 +216,4 @@ const rowTemplate = (repLog) => `
+ </tr>
+ `;
+ 
+-module.exports = RepLogApp;
++export default RepLogApp;
+diff --git a/assets/js/Components/RepLogAppHelper.js b/assets/js/Components/RepLogAppHelper.js
+index bb2d5c9..2e5ae3a 100644
+--- a/assets/js/Components/RepLogAppHelper.js
++++ b/assets/js/Components/RepLogAppHelper.js
+@@ -34,4 +34,4 @@ class Helper {
+     }
+ }
+ 
+-module.exports = Helper;
++export default Helper;
+diff --git a/assets/js/Components/Routing.js b/assets/js/Components/Routing.js
+index 09c7674..1e18488 100644
+--- a/assets/js/Components/Routing.js
++++ b/assets/js/Components/Routing.js
+@@ -2,4 +2,4 @@
+  * For now, we rely on the router.js script tag to be included
+  * in the layout. This is just a helper module to get that object.
+  */
+-module.exports = window.Routing;
++export default window.Routing;
