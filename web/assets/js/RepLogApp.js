@@ -1,12 +1,14 @@
 
 
-(function(window, $) {
+(function(window, $, Routing, swal) {
 
     'use strict';
 
     window.RepLogApp = function ($wrapper) {
         this.$wrapper = $wrapper;
         this.helper = new Helper(this.$wrapper);
+
+        this.loadRepLogs();
 
         this.$wrapper.on(
             'click',
@@ -38,11 +40,25 @@
             newRepForm: '.js-new-rep-log-form'
         },
 
-        _mapErrorsToForm: function(errorData) {
+        _removeFormErrors: function() {
             var $form = this.$wrapper.find(this._selectors.newRepForm);
-
             $form.find('.js-field-error').remove();
             $form.find('.form-group').removeClass('has-error');
+        },
+
+        _clearForm: function() {
+            this._removeFormErrors();
+
+            var $form = this.$wrapper.find(this._selectors.newRepForm);
+            $form[0].reset();
+        },
+
+        _mapErrorsToForm: function(errorData) {
+            this._removeFormErrors();
+            var $form = this.$wrapper.find(this._selectors.newRepForm);
+
+            //$form.find('.js-field-error').remove();
+            //$form.find('.form-group').removeClass('has-error');
 
             $form.find(':input').each(function() {
                 var fieldName = $(this).attr('name');
@@ -59,6 +75,49 @@
             });
         },
 
+        _addRow: function(repLog) {
+            var tplText = $('#js-rep-log-row-template').html();
+            var tpl = _.template(tplText);
+
+            var html = tpl(repLog);
+            this.$wrapper.find('tbody').append($.parseHTML(html));
+            this.updateTotalWeightLifted();
+        },
+        _saveRepLog: function(data) {
+            return new Promise(function(resolve, reject) {
+                $.ajax({
+                    url: Routing.generate('rep_log_new'),
+                    method: 'POST',
+                    data: JSON.stringify(data)
+                }).then(function(data, textStatus, jqXHR) {
+                    // $.ajax({
+                    // });
+                    $.ajax({
+                        url: jqXHR.getResponseHeader('Location')
+                    }).then(function(data) {
+                        // we're finally done!
+                        resolve(data);
+                    }).catch(function(jqXHR) {
+                        reject(jqXHR);
+                    });
+                }).catch(function(jqXHR) {
+                    var errorData = JSON.parse(jqXHR.responseText);
+                    reject(errorData);
+                });
+            });
+        },
+
+        loadRepLogs: function() {
+            var self = this;
+            $.ajax({
+                url: Routing.generate('rep_log_list')
+            }).then(function(data) {
+                $.each(data.items, function(key, repLog) {
+                    self._addRow(repLog);
+                });
+            })
+        },
+
         handleNewFormSubmit: function(e) {
             e.preventDefault();
 
@@ -68,21 +127,14 @@
                 formData[fieldData.name] = fieldData.value;
             });
             var self = this;
-            $.ajax({
-                url: $form.data('url'),
-                method: 'POST',
-                data: JSON.stringify(formData),
-                /*
-                data: $form.serialize(),*/
-                success: function(data) {
-                    // todo
-                    console.log('success!');
-                },
-                error: function(jqXHR) {
-                    var errorData = JSON.parse(jqXHR.responseText);
+            this._saveRepLog(formData)
+                .then(function(data) {
+                    self._clearForm();
+                    self._addRow(data);
+                }).catch(function(jqXHR) {
+                    //var errorData = JSON.parse(jqXHR.responseText);
                     self._mapErrorsToForm(errorData.errors);
-                }
-            });
+                });
             //console.log('submitting!');
         },
 
@@ -95,6 +147,23 @@
         handleRepLogDelete: function (e) {
             e.preventDefault();
             var $link = $(e.currentTarget);
+
+            var self = this;
+            swal({
+                title: 'Delete this log?',
+                text: 'What? Did you not actually lift this?',
+                showCancelButton: true,
+                showLoaderOnConfirm: true,
+                preConfirm: function() {
+                    return self._deleteRepLog($link);
+                }
+            }).catch(function(arg) {
+                // canceling is cool!
+                //console.log('canceled', arg);
+            });
+        },
+
+        _deleteRepLog: function($link) {
             $link.addClass('text-danger');
             $link.find('.fa')
                 .removeClass('fa-trash')
@@ -103,21 +172,20 @@
             var deleteUrl = $link.data('url');
             var $row = $link.closest('tr');
             var self = this;
-            $.ajax({
+            return $.ajax({
                 url: deleteUrl,
-                method: 'DELETE',
-                success: function () {
-                    $row.fadeOut('normal', function () {
-                        $(this).remove();
-                        self.updateTotalWeightLifted();
-                    });
-                }
+                method: 'DELETE'
+            }).then(function() {
+                $row.fadeOut('normal', function () {
+                    $(this).remove();
+                    self.updateTotalWeightLifted();
+                });
             });
         },
 
         handleRowClick: function () {
             console.log('row clicked!');
-        }
+        },
     });
 
     /**
@@ -138,4 +206,4 @@
         }
     });
 
-})(window, jQuery);
+})(window, jQuery, Routing, swal);
