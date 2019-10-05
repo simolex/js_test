@@ -2,208 +2,289 @@
 
 (function(window, $, Routing, swal) {
 
-    'use strict';
+    //'use strict';
+    let HelperInstances = new WeakMap();
 
-    window.RepLogApp = function ($wrapper) {
-        this.$wrapper = $wrapper;
-        this.helper = new Helper(this.$wrapper);
+    class RepLogApp
+    {
+        constructor ($wrapper) {
+            this.$wrapper = $wrapper;
+            this.repLogs = [];
 
-        this.loadRepLogs();
+            HelperInstances.set(this, new Helper(this.repLogs));
 
-        this.$wrapper.on(
-            'click',
-            '.js-delete-rep-log',
-            this.handleRepLogDelete.bind(this)
-        );
+            //this.helper = new Helper(this.$wrapper);
 
-        this.$wrapper.on(
-            'click',
-            'tbody tr',
-            this.handleRowClick.bind(this)
-        );
+            this.loadRepLogs();
 
-        this.$wrapper.on(
-            'submit',
-            '.js-new-rep-log-form',
-            this.handleNewFormSubmit.bind(this)
-        );
+            this.$wrapper.on(
+                'click',
+                '.js-delete-rep-log',
+                this.handleRepLogDelete.bind(this)
+            );
 
-        this.$wrapper.on(
+            this.$wrapper.on(
+                'click',
+                'tbody tr',
+                this.handleRowClick.bind(this)
+            );
 
-            this._selectors.newRepForm,
-        );
-    };
+            this.$wrapper.on(
+                'submit',
+                '.js-new-rep-log-form',
+                this.handleNewFormSubmit.bind(this)
+            );
 
-    $.extend(window.RepLogApp.prototype, {
+            this.$wrapper.on(
 
-        _selectors: {
-            newRepForm: '.js-new-rep-log-form'
-        },
+                RepLogApp._selectors.newRepForm,
+            );
+        }
+    /*}
 
-        _removeFormErrors: function() {
-            var $form = this.$wrapper.find(this._selectors.newRepForm);
+    $.extend(window.RepLogApp.prototype, {*/
+
+        static get _selectors() {
+            return {
+                newRepForm: '.js-new-rep-log-form'
+            }
+        }
+
+        _removeFormErrors() {
+            const $form = this.$wrapper.find(RepLogApp._selectors.newRepForm);
             $form.find('.js-field-error').remove();
             $form.find('.form-group').removeClass('has-error');
-        },
+        }
 
-        _clearForm: function() {
+        _clearForm() {
             this._removeFormErrors();
 
-            var $form = this.$wrapper.find(this._selectors.newRepForm);
+            const $form = this.$wrapper.find(RepLogApp._selectors.newRepForm);
             $form[0].reset();
-        },
+        }
 
-        _mapErrorsToForm: function(errorData) {
+        _mapErrorsToForm(errorData) {
             this._removeFormErrors();
-            var $form = this.$wrapper.find(this._selectors.newRepForm);
+            const $form = this.$wrapper.find(RepLogApp._selectors.newRepForm);
 
             //$form.find('.js-field-error').remove();
             //$form.find('.form-group').removeClass('has-error');
 
-            $form.find(':input').each(function() {
-                var fieldName = $(this).attr('name');
-                var $wrapper = $(this).closest('.form-group');
+            //$form.find(':input').each( (index, element) => {
+            for (let element of $form.find(':input')) {
+                const fieldName = $(element).attr('name');
+                const $wrapper = $(element).closest('.form-group');
                 if (!errorData[fieldName]) {
                     // no error!
                     return;
                 }
 
-                var $error = $('<span class="js-field-error help-block"></span>');
+                const $error = $('<span class="js-field-error help-block"></span>');
                 $error.html(errorData[fieldName]);
                 $wrapper.append($error);
                 $wrapper.addClass('has-error');
-            });
-        },
+            }
+            //});
+        }
 
-        _addRow: function(repLog) {
-            var tplText = $('#js-rep-log-row-template').html();
-            var tpl = _.template(tplText);
+        _addRow(repLog) {
+            this.repLogs.push(repLog);
+            //let {id, itemLabel, reps, totallyMadeUpKey = 'whatever!'} = repLog;
+            //console.log(id, itemLabel, reps, totallyMadeUpKey);
 
-            var html = tpl(repLog);
-            this.$wrapper.find('tbody').append($.parseHTML(html));
+            //const tplText = $('#js-rep-log-row-template').html();
+            //const tpl = _.template(tplText);
+
+            const html = rowTemplate(repLog);
+            const $row = $($.parseHTML(html));
+            // store the repLogs index
+            $row.data('key', this.repLogs.length - 1);
+            this.$wrapper.find('tbody').append($row);
+
             this.updateTotalWeightLifted();
-        },
-        _saveRepLog: function(data) {
-            return new Promise(function(resolve, reject) {
+        }
+
+        _saveRepLog(data) {
+            return new Promise( (resolve, reject) => {
+                const url = Routing.generate('rep_log_new');
                 $.ajax({
-                    url: Routing.generate('rep_log_new'),
+                    url: url,
                     method: 'POST',
                     data: JSON.stringify(data)
-                }).then(function(data, textStatus, jqXHR) {
+                }).then( (data, textStatus, jqXHR) => {
                     // $.ajax({
                     // });
                     $.ajax({
                         url: jqXHR.getResponseHeader('Location')
-                    }).then(function(data) {
+                    }).then( (data) => {
                         // we're finally done!
                         resolve(data);
-                    }).catch(function(jqXHR) {
+                    }).catch( (jqXHR) => {
                         reject(jqXHR);
                     });
-                }).catch(function(jqXHR) {
-                    var errorData = JSON.parse(jqXHR.responseText);
+                }).catch( (jqXHR) => {
+                    const errorData = JSON.parse(jqXHR.responseText);
                     reject(errorData);
                 });
             });
-        },
+        }
 
-        loadRepLogs: function() {
-            var self = this;
+        loadRepLogs() {
             $.ajax({
                 url: Routing.generate('rep_log_list')
-            }).then(function(data) {
-                $.each(data.items, function(key, repLog) {
-                    self._addRow(repLog);
-                });
+            }).then((data) => {
+                //.each(data.items, (key, repLog) => {
+                for (let repLog of data.items) {
+                    this._addRow(repLog);
+                }
+                //});
+                //console.log(this.repLogs, this.repLogs.includes(data.items[0]));
             })
-        },
+        }
 
-        handleNewFormSubmit: function(e) {
+        handleNewFormSubmit(e) {
             e.preventDefault();
-
-            var $form = $(e.currentTarget);
-            var formData = {};
-            $.each($form.serializeArray(), function(key, fieldData) {
+            const $form = $(e.currentTarget);
+            const formData = {};
+            //$.each($form.serializeArray(), (key, fieldData) => {
+            for (let fieldData of $form.serializeArray()) {
                 formData[fieldData.name] = fieldData.value;
-            });
-            var self = this;
+            }
+            //});
+
             this._saveRepLog(formData)
-                .then(function(data) {
-                    self._clearForm();
-                    self._addRow(data);
-                }).catch(function(jqXHR) {
+                .then((data) => {
+                    this._clearForm();
+                    this._addRow(data);
+                }).catch( (jqXHR) => {
                     //var errorData = JSON.parse(jqXHR.responseText);
-                    self._mapErrorsToForm(errorData.errors);
+                    this._mapErrorsToForm(errorData.errors);
                 });
             //console.log('submitting!');
-        },
+        }
 
-        updateTotalWeightLifted: function () {
+        updateTotalWeightLifted() {
             this.$wrapper.find('.js-total-weight').html(
-                this.helper.calculateTotalWeight()
+                HelperInstances.get(this).getTotalWeightString()
             );
-        },
+        }
 
-        handleRepLogDelete: function (e) {
+        handleRepLogDelete(e) {
             e.preventDefault();
-            var $link = $(e.currentTarget);
+            const $link = $(e.currentTarget);
 
-            var self = this;
             swal({
                 title: 'Delete this log?',
                 text: 'What? Did you not actually lift this?',
                 showCancelButton: true,
                 showLoaderOnConfirm: true,
-                preConfirm: function() {
-                    return self._deleteRepLog($link);
+                preConfirm: () => {
+                    return this._deleteRepLog($link);
                 }
-            }).catch(function(arg) {
+            }).catch((arg) => {
                 // canceling is cool!
                 //console.log('canceled', arg);
             });
-        },
+        }
 
-        _deleteRepLog: function($link) {
+        _deleteRepLog($link) {
             $link.addClass('text-danger');
             $link.find('.fa')
                 .removeClass('fa-trash')
                 .addClass('fa-spinner')
                 .addClass('fa-spin');
-            var deleteUrl = $link.data('url');
-            var $row = $link.closest('tr');
-            var self = this;
+
+            const deleteUrl = $link.data('url');
+            const $row = $link.closest('tr');
+
             return $.ajax({
                 url: deleteUrl,
                 method: 'DELETE'
-            }).then(function() {
-                $row.fadeOut('normal', function () {
-                    $(this).remove();
-                    self.updateTotalWeightLifted();
+            }).then( () => {
+                $row.fadeOut('normal',  () => {
+                    // we need to remove the repLog from this.repLogs
+                    // the "key" is the index to this repLog on this.repLogs
+                    this.repLogs.splice(
+                        $row.data('key'),
+                        1
+                    );
+
+                    $row.remove();
+
+                    this.updateTotalWeightLifted();
                 });
             });
-        },
+        }
 
-        handleRowClick: function () {
+        handleRowClick() {
             console.log('row clicked!');
-        },
-    });
+        }
+    }
 
     /**
      * A "private" object
      */
 
-    var Helper = function ($wrapper) {
-        this.$wrapper = $wrapper;
-    };
+    class Helper {
 
-    $.extend(Helper.prototype, {
-        calculateTotalWeight: function() {
-            var totalWeight = 0;
-            this.$wrapper.find('tbody tr').each(function () {
-                totalWeight += $(this).data('weight');
-            });
+        constructor(repLogs) {
+
+            this.repLogs = repLogs;
+        }
+
+        static _calculateWeights(repLogs) {
+
+            let totalWeight = 0;
+
+            //$elements.each( (index, element) => {
+            for (let repLog of repLogs) {
+                totalWeight += repLog.totalWeightLifted;
+            }
+            //});
+
             return totalWeight;
         }
-    });
 
+        calculateTotalWeight() {
+            return Helper._calculateWeights(
+                this.repLogs
+                //this.$wrapper.find('tbody tr')
+            );
+        }
+
+        getTotalWeightString(maxWeight = 500) {
+            let weight = this.calculateTotalWeight();
+
+            if (weight > maxWeight) {
+                weight = maxWeight + '+';
+            }
+
+            return weight + ' lbs';
+        }
+    }
+
+    /*function upper(template, ...expressions) {
+        return template.reduce((accumulator, part, i) => {
+            return accumulator + (expressions[i - 1].toUpperCase ? expressions[i - 1].toUpperCase() : expressions[i - 1]) + part
+        })
+    }*/
+
+    //const rowTemplate = (repLog) => upper`
+    const rowTemplate = (repLog) => `
+        <tr data-weight="${ repLog.totalWeightLifted }">
+            <td>${ repLog.itemLabel }</td>
+            <td>${ repLog.reps }</td>
+            <td>${ repLog.totalWeightLifted }</td>
+            <td>
+                <a href="#"
+                   class="js-delete-rep-log"
+                   data-url="${ repLog.links._self }"
+                >
+                    <span class="fa fa-trash"></span>
+                </a>
+            </td>
+        </tr>
+    `;
+
+    window.RepLogApp = RepLogApp;
 })(window, jQuery, Routing, swal);
