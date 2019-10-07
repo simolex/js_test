@@ -2,6 +2,33 @@ const path = require('path');
 const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
+const styleLoader = {
+    loader: 'style-loader',
+    options: {
+    }
+};
+
+const cssLoader = {
+    loader: 'css-loader',
+    options: {
+        sourceMap: true
+    }
+};
+
+const resolveUrlLoader = {
+    loader: 'resolve-url-loader',
+    options: {
+        sourceMap: true
+    }
+};
+
+const sassLoader = {
+    loader: 'sass-loader',
+    options: {
+        sourceMap: true
+    }
+};
+
 module.exports = {
     context: __dirname,
     mode: 'development',
@@ -27,7 +54,16 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                loader: [ 'style-loader', 'css-loader' ]
+                loader: [ styleLoader, cssLoader ]
+            },
+            {
+                test: /\.s[ac]ss$/,
+                use: [
+                    styleLoader,
+                    cssLoader,
+                    resolveUrlLoader,
+                    sassLoader,
+                ]
             },
             {
                 test: /\.(png|jpg|jpeg|gif|ico|svg)$/,
@@ -52,7 +88,8 @@ module.exports = {
         ]),
         new webpack.ProvidePlugin({
             jQuery: 'jquery',
-            $: 'jquery'
+            $: 'jquery',
+            'window.jQuery': 'jquery',
         })
     ],
     watch: true,
@@ -60,4 +97,5 @@ module.exports = {
         aggregateTimeout: 300,
         ignored: './../../node_modules'
     },
+    devtool: 'inline-source-map'
 };

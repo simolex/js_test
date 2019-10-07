@@ -11,7 +11,7 @@ let HelperInstances = new WeakMap();
 
 class RepLogApp
 {
-    constructor ($wrapper) {
+    constructor ($wrapper, initialRepLogs) {
         this.$wrapper = $wrapper;
         this.repLogs = [];
 
@@ -19,7 +19,11 @@ class RepLogApp
 
         //this.helper = new Helper(this.$wrapper);
 
-        this.loadRepLogs();
+        //this.loadRepLogs();
+
+        for (let repLog of initialRepLogs) {
+            this._addRow(repLog);
+        }
 
         this.$wrapper.on(
             'click',
@@ -133,7 +137,7 @@ $.extend(window.RepLogApp.prototype, {*/
         });
     }
 
-    loadRepLogs() {
+    /*loadRepLogs() {
         $.ajax({
             url: Routing.generate('rep_log_list')
         }).then((data) => {
@@ -144,7 +148,7 @@ $.extend(window.RepLogApp.prototype, {*/
             //});
             //console.log(this.repLogs, this.repLogs.includes(data.items[0]));
         })
-    }
+    }*/
 
     handleNewFormSubmit(e) {
         e.preventDefault();
